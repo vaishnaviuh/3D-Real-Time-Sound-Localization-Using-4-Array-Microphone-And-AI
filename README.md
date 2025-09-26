@@ -19,6 +19,13 @@ This repository contains a Jupyter Notebook for sound localization using signal 
 - Jupyter Notebook
 - Libraries: `numpy`, `matplotlib`, `librosa`, `scipy`, etc.
 
+## installling rasp in linux
+```bash
+sudo apt update
+sudo apt install rpi-imager
+```
+
+
 ## Author
 
 Vaishnavi Hiremath
