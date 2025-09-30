@@ -128,9 +128,6 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 from typing import Tuple
 
-# -------------------------------
-# Helper functions
-# -------------------------------
 def _pair_index_to_channels(pair_idx: int, K: int) -> Tuple[int, int]:
     """Convert linear pair index back to channel indices (i,j)."""
     i = 0
@@ -160,9 +157,7 @@ def smooth_coherence(x: np.ndarray, y: np.ndarray, win_size=5) -> np.ndarray:
             coh[l, m] = num / den
     return np.clip(coh, 0, 1)
 
-# -------------------------------
-#Core function
-# -------------------------------
+
 def process_multi_channel_coherence(
         tf_maps: np.ndarray,
         calc_coherence: callable,
@@ -223,9 +218,7 @@ def process_multi_channel_coherence(
 
     return average_tf_map, coherence_mask, best_pair_indices
 
-# -------------------------------
-#Main pipeline
-# -------------------------------
+
 if __name__ == "__main__":
     audio_file_path = "/content/Drone1_trimmed.wav"  # <-- Update path
     y, sr = sf.read(audio_file_path)
@@ -317,9 +310,7 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 from typing import Tuple
 
-# -------------------------------
-#Helper functions
-# -------------------------------
+
 def _pair_index_to_channels(pair_idx: int, K: int) -> Tuple[int, int]:
     i = 0
     remaining = pair_idx
@@ -342,9 +333,6 @@ def smooth_coherence(x: np.ndarray, y: np.ndarray, win_size=5) -> np.ndarray:
             coh[l, m] = num / den
     return np.clip(coh, 0, 1)
 
-# -------------------------------
-#Core function
-# -------------------------------
 def process_multi_channel_coherence(
         tf_maps: np.ndarray,
         calc_coherence: callable,
@@ -403,9 +391,7 @@ def process_multi_channel_coherence(
 
     return average_tf_map, coherence_mask, best_pair_indices
 
-# -------------------------------
-#Main pipeline
-# -------------------------------
+
 if __name__ == "__main__":
     audio_file_path = "/content/Drone1_trimmed.wav"
     y, sr = sf.read(audio_file_path)
