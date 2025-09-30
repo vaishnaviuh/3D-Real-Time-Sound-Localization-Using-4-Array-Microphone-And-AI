@@ -28,6 +28,8 @@ from scipy.interpolate import interp1d
 import os
 
 #Bandpass filter function 
+
+
 def bandpass_filter(signal, sr, lowcut=300, highcut=3000, order=4):
     nyq = 0.5 * sr
     low = lowcut / nyq
@@ -36,6 +38,8 @@ def bandpass_filter(signal, sr, lowcut=300, highcut=3000, order=4):
     return filtfilt(b, a, signal)
 
 #Load audio 
+
+
 file = "/content/DroneSound_noMuff.wav"
 y, sr = librosa.load(file, sr=None, mono=False)
 if y.ndim == 1:
@@ -45,6 +49,8 @@ num_channels = min(5, y.shape[0])   # Use first 4 channels
 print(f"Processing {num_channels} channels.")
 
 #STFT params 
+
+
 n_fft = 2048
 hop_length = 512
 
@@ -56,6 +62,8 @@ for i in range(num_channels):
 channel_specs = np.stack(channel_specs, axis=-1)
 
 #Coherence computation
+
+
 window_size = 2048
 step_size = 512
 nperseg = 256
@@ -76,20 +84,28 @@ for i in range(num_channels):
         coh_spec = np.array(coh_spec).T
         all_coh_specs.append(coh_spec)
 #Median coherence spectrum 
+
+
 min_time_bins = min(spec.shape[1] for spec in all_coh_specs)
 all_coh_specs_trunc = [spec[:, :min_time_bins] for spec in all_coh_specs]
 median_coh_spec = np.median(np.stack(all_coh_specs_trunc, axis=-1), axis=-1)
 
 #Square as filter 
+
+
 coh_filter = median_coh_spec ** 2   # squaring enhances strong coherence, suppresses weak
 coh_filter = np.clip(coh_filter, 0, 1)
 
 #Interpolate to STFT frequencies 
+
+
 freq_stft = np.linspace(0, sr/2, channel_specs.shape[0])
 interp_func = interp1d(f, coh_filter, axis=0, kind='nearest', fill_value="extrapolate")
 coh_interp = interp_func(freq_stft)
 
 #Apply filter 
+
+
 output_dir = "/content/results_squared_filter"
 os.makedirs(output_dir, exist_ok=True)
 
@@ -122,6 +138,8 @@ for ch in range(num_channels):
 
     print(f"Saved comparison spectrogram for Channel {ch+1}")
 #coherence
+
+
 import numpy as np
 import librosa
 import matplotlib.pyplot as plt
