@@ -76,21 +76,21 @@ for i in range(num_channels):
         coh_spec = np.array(coh_spec).T
         all_coh_specs.append(coh_spec)
 
-# --- Median coherence spectrum ---
+- Median coherence spectrum 
 min_time_bins = min(spec.shape[1] for spec in all_coh_specs)
 all_coh_specs_trunc = [spec[:, :min_time_bins] for spec in all_coh_specs]
 median_coh_spec = np.median(np.stack(all_coh_specs_trunc, axis=-1), axis=-1)
 
-# --- Square as filter ---
+-Square as filter 
 coh_filter = median_coh_spec ** 2   # squaring enhances strong coherence, suppresses weak
 coh_filter = np.clip(coh_filter, 0, 1)
 
-# --- Interpolate to STFT frequencies ---
+-Interpolate to STFT frequencies 
 freq_stft = np.linspace(0, sr/2, channel_specs.shape[0])
 interp_func = interp1d(f, coh_filter, axis=0, kind='nearest', fill_value="extrapolate")
 coh_interp = interp_func(freq_stft)
 
-# --- Apply filter ---
+-Apply filter 
 output_dir = "/content/results_squared_filter"
 os.makedirs(output_dir, exist_ok=True)
 
