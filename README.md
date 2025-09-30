@@ -27,7 +27,7 @@ from scipy.signal import coherence, butter, filtfilt
 from scipy.interpolate import interp1d
 import os
 
-# --- Bandpass filter function ---
+- Bandpass filter function 
 def bandpass_filter(signal, sr, lowcut=300, highcut=3000, order=4):
     nyq = 0.5 * sr
     low = lowcut / nyq
@@ -35,7 +35,7 @@ def bandpass_filter(signal, sr, lowcut=300, highcut=3000, order=4):
     b, a = butter(order, [low, high], btype='band')
     return filtfilt(b, a, signal)
 
-# --- Load audio ---
+-Load audio 
 file = "/content/DroneSound_noMuff.wav"
 y, sr = librosa.load(file, sr=None, mono=False)
 if y.ndim == 1:
@@ -44,18 +44,18 @@ if y.ndim == 1:
 num_channels = min(5, y.shape[0])   # Use first 4 channels
 print(f"Processing {num_channels} channels.")
 
-# --- STFT params ---
+-STFT params 
 n_fft = 2048
 hop_length = 512
 
-# --- Compute STFT for each channel ---
+-Compute STFT for each channel
 channel_specs = []
 for i in range(num_channels):
     S = librosa.stft(y[i], n_fft=n_fft, hop_length=hop_length)
     channel_specs.append(S)
 channel_specs = np.stack(channel_specs, axis=-1)
 
-# --- Coherence computation ---
+-Coherence computation
 window_size = 2048
 step_size = 512
 nperseg = 256
@@ -122,7 +122,7 @@ for ch in range(num_channels):
     plt.close()
 
     print(f"Saved comparison spectrogram for Channel {ch+1}")
-## coherence
+-coherence
 import numpy as np
 import librosa
 import matplotlib.pyplot as plt
@@ -162,7 +162,7 @@ def smooth_coherence(x: np.ndarray, y: np.ndarray, win_size=5) -> np.ndarray:
     return np.clip(coh, 0, 1)
 
 # -------------------------------
-# Core function
+-Core function
 # -------------------------------
 def process_multi_channel_coherence(
         tf_maps: np.ndarray,
@@ -225,7 +225,7 @@ def process_multi_channel_coherence(
     return average_tf_map, coherence_mask, best_pair_indices
 
 # -------------------------------
-# Main pipeline
+-Main pipeline
 # -------------------------------
 if __name__ == "__main__":
     audio_file_path = "/content/Drone1_trimmed.wav"  # <-- Update path
@@ -319,7 +319,7 @@ import soundfile as sf
 from typing import Tuple
 
 # -------------------------------
-# Helper functions
+-Helper functions
 # -------------------------------
 def _pair_index_to_channels(pair_idx: int, K: int) -> Tuple[int, int]:
     i = 0
@@ -344,7 +344,7 @@ def smooth_coherence(x: np.ndarray, y: np.ndarray, win_size=5) -> np.ndarray:
     return np.clip(coh, 0, 1)
 
 # -------------------------------
-# Core function
+-Core function
 # -------------------------------
 def process_multi_channel_coherence(
         tf_maps: np.ndarray,
@@ -405,7 +405,7 @@ def process_multi_channel_coherence(
     return average_tf_map, coherence_mask, best_pair_indices
 
 # -------------------------------
-# Main pipeline
+-Main pipeline
 # -------------------------------
 if __name__ == "__main__":
     audio_file_path = "/content/Drone1_trimmed.wav"
