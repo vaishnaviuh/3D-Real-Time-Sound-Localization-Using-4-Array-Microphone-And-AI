@@ -1,0 +1,85 @@
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Arial, sans-serif;
+  color: #1e293b;
+  background: #f8fafc;
+}
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+h1 {
+  margin: 0;
+  font-size: 20px;
+}
+.controls button {
+  margin-right: 8px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+.controls button#btnStop {
+  background: #ef4444;
+}
+.controls #status {
+  margin-left: 12px;
+  font-weight: 600;
+}
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.panel {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  padding: 12px;
+}
+.panel h2 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+}
+#canvas2d {
+  width: 100%;
+  height: 500px;
+  image-rendering: crisp-edges;
+  border-radius: 8px;
+  background: #f1f5f9;
+}
+#threeRoot {
+  width: 100%;
+  height: 500px;
+  border-radius: 8px;
+  background: #0f172a;
+  position: relative;
+}
+.overlay {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  color: #e2e8f0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  pointer-events: none;
+}
+.info {
+  margin-top: 12px;
+  font-size: 14px;
+  display: flex;
+  gap: 16px;
+}
+
+

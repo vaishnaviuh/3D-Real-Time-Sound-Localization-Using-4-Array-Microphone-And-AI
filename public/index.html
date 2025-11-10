@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sound Localization Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Sound Localization Dashboard</h1>
+        <div class="controls">
+          <button id="btnStart">Start</button>
+          <button id="btnStop">Stop</button>
+          <button id="btnClear">Clear Trail</button>
+          <span id="status">Disconnected</span>
+        </div>
+      </header>
+
+      <section class="panels">
+        <div class="panel">
+          <h2>2D Top View</h2>
+          <canvas id="canvas2d" width="500" height="500"></canvas>
+        </div>
+        <div class="panel">
+          <h2>3D View</h2>
+          <div id="threeRoot">
+            <div id="coord3d" class="overlay"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="info">
+        <div>
+          <strong>Status</strong>:
+          <span id="detectionStatus" style="color: #ef4444;">Waiting for signal...</span>
+        </div>
+        <div>
+          <strong>Position</strong>:
+          <span id="pos">(0.000, 0.000, 0.000) m</span>
+        </div>
+        <div>
+          <strong>Angles</strong>:
+          <span id="ang">Azimuth 0°, Elevation 0°</span>
+        </div>
+        <div>
+          <strong>Height</strong>:
+          <span id="height">0.000 m</span>
+        </div>
+        <div>
+          <strong>Distance</strong>:
+          <span id="distance">0.000 m</span>
+        </div>
+        <div>
+          <strong>Signal Energy</strong>:
+          <span id="energy">Avg: 0.00000000, Max: 0.00000000</span>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top: 12px;">
+        <h2>TDOA (seconds)</h2>
+        <table id="tdoaTable" style="width:100%; border-collapse: collapse; font-size: 12px;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:6px; border-bottom:1px solid #e2e8f0;">Ch 1</th>
+              <th style="text-align:left; padding:6px; border-bottom:1px solid #e2e8f0;">Ch 2</th>
+              <th style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0;">TDOA (s)</th>
+            </tr>
+          </thead>
+          <tbody id="tdoaBody"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>
+
+
