@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Localization Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.3) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .system-status {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            padding: 15px 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .system-status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95em;
+        }
+
+        .system-status-label {
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        .system-status-value {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .detection-indicator {
+            display: inline-block;
+            margin-left: 15px;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            background: rgba(239, 68, 68, 0.3);
+            color: #fff;
+            animation: blink 1s infinite;
+        }
+
+        .detection-indicator.active {
+            background: rgba(74, 222, 128, 0.5);
+            animation: none;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background-color: #4ade80;
+        }
+
+        .status-indicator.disconnected {
+            background-color: #ef4444;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .confidence-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .confidence-label {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .confidence-bar-container {
+            flex: 1;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .confidence-bar {
+            height: 100%;
+            transition: width 0.3s ease, background 0.3s ease;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .confidence-bar.high {
+            background: linear-gradient(90deg, #4ade80, #22c55e);
+        }
+
+        .confidence-bar.medium {
+            background: linear-gradient(90deg, #fbbf24, #f59e0b);
+        }
+
+        .confidence-bar.low {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        .confidence-gauge {
+            width: 80px;
+            height: 80px;
+            position: relative;
+        }
+
+        .gauge-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 8px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.9), rgba(118, 75, 162, 0.9));
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .stat-card .unit {
+            font-size: 0.7em;
+            opacity: 0.8;
+            margin-left: 5px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            color: #333;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .plot-container {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .data-table-container {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .data-table th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            font-size: 0.9em;
+        }
+
+        .data-table tr:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .breakdown-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .breakdown-item {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .breakdown-label {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .breakdown-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .spectrogram-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .spectrogram-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .spectrogram-panel h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            text-align: center;
+        }
+
+        .spectrogram-container {
+            width: 100%;
+            height: 200px;
+            border-radius: 8px;
+            background: #f5f5f5;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .spectrogram-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .spectrogram-plot {
+            width: 100%;
+            height: 100%;
+        }
+
+        .trajectory-panel {
+            grid-column: 1 / -1;
+        }
+
+        .trajectory-container {
+            width: 100%;
+            height: 300px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            position: relative;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .spectrogram-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="system-status" id="system-status">
+            <div class="system-status-item">
+                <span class="system-status-label">Array:</span>
+                <span class="system-status-value" id="array-name">ReSpeaker 4-Mic</span>
+            </div>
+            <div class="system-status-item">
+                <span class="system-status-label">Sampling Rate:</span>
+                <span class="system-status-value" id="sampling-rate">16000 Hz</span>
+            </div>
+            <div class="system-status-item">
+                <span class="system-status-label">Latency:</span>
+                <span class="system-status-value" id="latency">-- ms</span>
+            </div>
+            <div class="system-status-item">
+                <span class="system-status-label">CPU Load:</span>
+                <span class="system-status-value" id="cpu-load">-- %</span>
+            </div>
+            <div class="system-status-item">
+                <span class="system-status-label">Sound Class:</span>
+                <span class="system-status-value" id="sound-class">--</span>
+            </div>
+            <div class="system-status-item">
+                <span class="system-status-label">Trigger:</span>
+                <span class="system-status-value" id="trigger-status">--</span>
+            </div>
+        </div>
+
+        <div class="header">
+            <h1>🎤 Live Sound Localization Dashboard</h1>
+            <p>
+                <span id="status-indicator" class="status-indicator disconnected"></span>
+                <span id="status-text">Connecting...</span>
+                <span id="detection-indicator" class="detection-indicator">No Detection</span>
+            </p>
+        </div>
+
+        <div class="confidence-container">
+            <span class="confidence-label">Accuracy / Confidence:</span>
+            <div class="confidence-bar-container">
+                <div class="confidence-bar" id="confidence-bar" style="width: 0%">0%</div>
+            </div>
+            <div class="confidence-gauge">
+                <div class="gauge-circle" id="confidence-gauge">0%</div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">Azimuth</div>
+                <div class="value"><span id="azimuth-value">--</span><span class="unit">°</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Elevation</div>
+                <div class="value"><span id="elevation-value">--</span><span class="unit">°</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Distance</div>
+                <div class="value"><span id="distance-value">--</span><span class="unit">m</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Update Rate</div>
+                <div class="value"><span id="fps-value">0</span><span class="unit">Hz</span></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Array Status</h2>
+            <div id="array-status-grid" class="stats-grid"></div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="panel">
+                <h2>2D Localization Map</h2>
+                <div id="plot-2d" class="plot-container"></div>
+                <div class="breakdown-grid">
+                    <div class="breakdown-item">
+                        <div class="breakdown-label">ΔX</div>
+                        <div class="breakdown-value" id="delta-x">-- m</div>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="breakdown-label">ΔY</div>
+                        <div class="breakdown-value" id="delta-y">-- m</div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel">
+                <h2>3D Localization Map</h2>
+                <div id="plot-3d" class="plot-container"></div>
+                <div class="breakdown-grid">
+                    <div class="breakdown-item">
+                        <div class="breakdown-label">ΔX</div>
+                        <div class="breakdown-value" id="delta-x-3d">-- m</div>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="breakdown-label">ΔY</div>
+                        <div class="breakdown-value" id="delta-y-3d">-- m</div>
+                    </div>
+                    <div class="breakdown-item">
+                        <div class="breakdown-label">ΔZ</div>
+                        <div class="breakdown-value" id="delta-z">-- m</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>TOA/TDOA Data</h2>
+            <div class="data-table-container">
+                <table class="data-table" id="tdoa-table">
+                    <thead>
+                        <tr>
+                            <th>Mic Pair</th>
+                            <th>TOA (ms)</th>
+                            <th>TDOA (µs)</th>
+                            <th>ΔDistance (cm)</th>
+                            <th>Corr. Peak</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tdoa-table-body">
+                        <tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;">Waiting for data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Microphone Spectrograms</h2>
+            <div class="spectrogram-grid">
+                <div class="spectrogram-panel">
+                    <h3>Mic 1</h3>
+                    <div class="spectrogram-container" id="spec-1">
+                        <div class="spectrogram-placeholder">Spectrogram will appear here</div>
+                    </div>
+                </div>
+                <div class="spectrogram-panel">
+                    <h3>Mic 2</h3>
+                    <div class="spectrogram-container" id="spec-2">
+                        <div class="spectrogram-placeholder">Spectrogram will appear here</div>
+                    </div>
+                </div>
+                <div class="spectrogram-panel">
+                    <h3>Mic 3</h3>
+                    <div class="spectrogram-container" id="spec-3">
+                        <div class="spectrogram-placeholder">Spectrogram will appear here</div>
+                    </div>
+                </div>
+                <div class="spectrogram-panel">
+                    <h3>Mic 4</h3>
+                    <div class="spectrogram-container" id="spec-4">
+                        <div class="spectrogram-placeholder">Spectrogram will appear here</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel trajectory-panel">
+            <h2>Trajectory History</h2>
+            <div id="trajectory" class="trajectory-container"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="startProcessing()">Start Processing</button>
+            <button class="btn btn-danger" onclick="stopProcessing()">Stop Processing</button>
+            <button class="btn btn-success" onclick="exportSnapshot()">Export Snapshot</button>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let micArrays = [];
+        let plotsInitialized = false;
+        let trajectory = [];
+        let lastUpdateTime = 0;
+        let updateCount = 0;
+        let fps = 0;
+        let lastTimestamp = 0;
+        let spectrogramData = [[], [], [], []]; // Store spectrogram data for each mic
+        let spectrogramTimeData = []; // Store time axis data
+        let spectrogramInitialized = [false, false, false, false];
+        let spectrogramUpdateCounter = 0;
+        let lastDetectionTime = 0;
+        let directionTraceIndex2D = null;
+        let sourceTraceIndex2D = null;
+        let arrayDirectionIndices2D = {};
+        let directionTraceIndex3D = null;
+        let sourceTraceIndex3D = null;
+        let arrayDirectionIndices3D = {};
+        const SPEED_OF_SOUND = 343.0; // m/s
+        const SAMPLING_RATE = 16000; // Hz
+        const NYQUIST_FREQ = SAMPLING_RATE / 2; // 8000 Hz
+        const MAX_TIME_WINDOW = 5; // seconds of history to show
+        const SPECTROGRAM_UPDATE_RATE = 2; // updates per second
+
+        function renderArrayStatus(arrays) {
+            const container = document.getElementById('array-status-grid');
+            if (!container) return;
+            if (!arrays || arrays.length === 0) {
+                container.innerHTML = '<div class="stat-card"><div class="label">Arrays</div><div class="value">No data</div></div>';
+                return;
+            }
+            container.innerHTML = arrays.map(array => {
+                const az = array.azimuth_deg !== null && array.azimuth_deg !== undefined ? array.azimuth_deg.toFixed(1) : '--';
+                const el = array.elevation_deg !== null && array.elevation_deg !== undefined ? array.elevation_deg.toFixed(1) : '--';
+                const dist = array.distance_m !== null && array.distance_m !== undefined ? array.distance_m.toFixed(2) + ' m' : 'unknown';
+                const conf = array.confidence !== null && array.confidence !== undefined ? (array.confidence * 100).toFixed(0) + '%' : '--';
+                return `
+                    <div class="stat-card" style="border-top: 4px solid ${array.color || '#22c55e'}">
+                        <div class="label">${array.name || 'Array'}</div>
+                        <div class="value">${az}<span class="unit">°</span></div>
+                        <div class="label">Elev: ${el}°, Dist: ${dist}</div>
+                        <div class="label">Conf: ${conf}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getArrayCenter(arrayName) {
+            if (!micArrays || micArrays.length === 0) return null;
+            const target = micArrays.find(arr => (arr.name || '').toLowerCase() === arrayName.toLowerCase());
+            if (!target || !target.mic_positions || target.mic_positions.length === 0) return null;
+            const sum = target.mic_positions.reduce(
+                (acc, pos) => ({
+                    x: acc.x + (pos.x || 0),
+                    y: acc.y + (pos.y || 0),
+                    z: acc.z + (pos.z || 0),
+                }),
+                { x: 0, y: 0, z: 0 }
+            );
+            const count = target.mic_positions.length;
+            return { x: sum.x / count, y: sum.y / count, z: sum.z / count };
+        }
+
+        // Initialize 2D plot
+        const plot2d = {
+            data: [],
+            layout: {
+                title: '2D Sound Localization',
+                xaxis: { 
+                    title: 'X (m)', 
+                    range: [-2, 2],
+                    showgrid: true,
+                    gridcolor: 'rgba(0,0,0,0.1)',
+                    zeroline: true,
+                    zerolinecolor: 'rgba(0,0,0,0.3)'
+                },
+                yaxis: { 
+                    title: 'Y (m)', 
+                    range: [-2, 2], 
+                    scaleanchor: 'x',
+                    showgrid: true,
+                    gridcolor: 'rgba(0,0,0,0.1)',
+                    zeroline: true,
+                    zerolinecolor: 'rgba(0,0,0,0.3)'
+                },
+                showlegend: true,
+                hovermode: 'closest',
+                plot_bgcolor: 'rgba(245, 245, 245, 0.8)',
+                paper_bgcolor: 'rgba(255, 255, 255, 0)',
+            },
+            config: { 
+                responsive: true, 
+                displayModeBar: false,
+                toImageButtonOptions: {
+                    format: 'png',
+                    filename: 'localization_2d',
+                    height: 500,
+                    width: 800,
+                    scale: 1
+                }
+            }
+        };
+
+        // Initialize 3D plot
+        const plot3d = {
+            data: [],
+            layout: {
+                title: '3D Sound Localization',
+                scene: {
+                    xaxis: { title: 'X (m)', range: [-2, 2] },
+                    yaxis: { title: 'Y (m)', range: [-2, 2] },
+                    zaxis: { title: 'Z (m)', range: [-2, 2] },
+                    aspectmode: 'cube',
+                    camera: { eye: { x: 1.5, y: 1.5, z: 1.5 } },
+                    bgcolor: 'rgba(245, 245, 245, 0.8)'
+                },
+                showlegend: true,
+                plot_bgcolor: 'rgba(255, 255, 255, 0)',
+                paper_bgcolor: 'rgba(255, 255, 255, 0)',
+            },
+            config: { 
+                responsive: true, 
+                displayModeBar: false,
+                toImageButtonOptions: {
+                    format: 'png',
+                    filename: 'localization_3d',
+                    height: 500,
+                    width: 800,
+                    scale: 1
+                }
+            }
+        };
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                updateStatus(true, 'Connected');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleMessage(data);
+                } catch (e) {
+                    console.error('Error parsing WebSocket message:', e, event.data);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateStatus(false, 'Connection Error');
+            };
+
+            ws.onclose = () => {
+                updateStatus(false, 'Disconnected');
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        function updateStatus(connected, text) {
+            const indicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            indicator.className = `status-indicator ${connected ? 'connected' : 'disconnected'}`;
+            statusText.textContent = text;
+        }
+
+        function handleMessage(data) {
+            console.log('Received message:', data.type, data);
+            if (data.type === 'init') {
+                micArrays = data.mic_arrays || [];
+                console.log('Initialized with mic arrays:', micArrays);
+                initializePlots(true);
+            } else if (data.type === 'doa_update') {
+                if (data.mic_arrays) {
+                    micArrays = data.mic_arrays;
+                    if (!plotsInitialized) {
+                        initializePlots(true);
+                    }
+                }
+                updateDashboard(data);
+                // Update spectrograms if available
+                if (data.spectrograms) {
+                    updateSpectrograms(data.spectrograms);
+                }
+            } else {
+                console.warn('Unknown message type:', data.type);
+            }
+        }
+
+        function calculateTDOA(sourcePos, micPositions) {
+            const pairs = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+            const pairNames = ['M1-M2', 'M1-M3', 'M1-M4', 'M2-M3', 'M2-M4', 'M3-M4'];
+            const results = [];
+
+            for (let idx = 0; idx < pairs.length; idx++) {
+                const [i, j] = pairs[idx];
+                const mic1 = micPositions[i];
+                const mic2 = micPositions[j];
+                
+                const dist1 = Math.sqrt(
+                    Math.pow(sourcePos.x - mic1.x, 2) +
+                    Math.pow(sourcePos.y - mic1.y, 2) +
+                    Math.pow((sourcePos.z || 0) - (mic1.z || 0), 2)
+                );
+                const dist2 = Math.sqrt(
+                    Math.pow(sourcePos.x - mic2.x, 2) +
+                    Math.pow(sourcePos.y - mic2.y, 2) +
+                    Math.pow((sourcePos.z || 0) - (mic2.z || 0), 2)
+                );
+                
+                const deltaDist = dist2 - dist1; // meters
+                const tdoa = (deltaDist / SPEED_OF_SOUND) * 1e6; // microseconds
+                const toa1 = (dist1 / SPEED_OF_SOUND) * 1000; // milliseconds
+                const toa2 = (dist2 / SPEED_OF_SOUND) * 1000; // milliseconds
+                
+                // Simulated correlation peak (would come from actual GCC-PHAT)
+                const corrPeak = Math.max(0.5, 1.0 - Math.abs(deltaDist) / 0.5);
+                
+                results.push({
+                    pair: pairNames[idx],
+                    toa: toa1.toFixed(2),
+                    tdoa: tdoa.toFixed(2),
+                    deltaDist: (deltaDist * 100).toFixed(2), // cm
+                    corrPeak: corrPeak.toFixed(3)
+                });
+            }
+            
+            return results;
+        }
+
+        function updateTDOATable(sourcePos) {
+            if (!sourcePos || sourcePos.x === null || !micArrays.length) {
+                return;
+            }
+            const primaryArray = micArrays[0];
+            if (!primaryArray || !primaryArray.mic_positions || primaryArray.mic_positions.length < 4) {
+                return;
+            }
+            const tdoaData = calculateTDOA(sourcePos, primaryArray.mic_positions);
+            const tbody = document.getElementById('tdoa-table-body');
+            tbody.innerHTML = '';
+            
+            tdoaData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${item.pair}</strong></td>
+                    <td>${item.toa}</td>
+                    <td>${item.tdoa}</td>
+                    <td>${item.deltaDist}</td>
+                    <td>${item.corrPeak}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function calculateConfidence(data) {
+            // If confidence is provided from backend, use it
+            if (data.confidence !== undefined && data.confidence !== null) {
+                return Math.max(0, Math.min(100, Math.round(data.confidence * 100)));
+            }
+            
+            // Fallback: Simple confidence based on distance stability and signal quality
+            if (!data.position_3d || data.position_3d.x === null) return 0;
+            
+            let confidence = 70; // Base confidence
+            
+            // Adjust based on distance (closer = more confident)
+            if (data.distance_m && data.distance_m < 2.0) {
+                confidence += 15;
+            }
+            
+            // Adjust based on update rate (higher = more confident)
+            if (fps > 5) {
+                confidence += 10;
+            }
+            
+            // Add some randomness for demo (in real system, use actual signal quality metrics)
+            confidence += Math.random() * 5 - 2.5;
+            
+            return Math.max(0, Math.min(100, Math.round(confidence)));
+        }
+
+        function updateConfidence(confidence) {
+            const bar = document.getElementById('confidence-bar');
+            const gauge = document.getElementById('confidence-gauge');
+            
+            bar.style.width = confidence + '%';
+            bar.textContent = confidence + '%';
+            gauge.textContent = confidence + '%';
+            
+            // Update color based on confidence
+            bar.className = 'confidence-bar';
+            if (confidence >= 70) {
+                bar.classList.add('high');
+                gauge.style.borderColor = '#4ade80';
+                gauge.style.color = '#22c55e';
+            } else if (confidence >= 40) {
+                bar.classList.add('medium');
+                gauge.style.borderColor = '#fbbf24';
+                gauge.style.color = '#f59e0b';
+            } else {
+                bar.classList.add('low');
+                gauge.style.borderColor = '#ef4444';
+                gauge.style.color = '#dc2626';
+            }
+        }
+
+        function updateSystemStatus(data) {
+            // Update latency
+            if (data.timestamp && lastTimestamp > 0) {
+                const latency = ((Date.now() / 1000 - data.timestamp) * 1000).toFixed(1);
+                document.getElementById('latency').textContent = latency + ' ms';
+            }
+            lastTimestamp = data.timestamp || Date.now() / 1000;
+            
+            // Simulated CPU load (in real system, get from backend)
+            const cpuLoad = (30 + Math.random() * 20).toFixed(1);
+            document.getElementById('cpu-load').textContent = cpuLoad + ' %';
+        }
+
+        function initializePlots(force = false) {
+            if (plotsInitialized && !force) return;
+            if (!micArrays || micArrays.length === 0) {
+                console.warn('No microphone arrays available yet.');
+                return;
+            }
+            plotsInitialized = true;
+            // Initialize spectrograms
+            initializeSpectrograms();
+            
+            // Add compass grid lines for 2D plot
+            const compassAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+            const compassRadius = 1.8;
+            const compassTraces = compassAngles.map(angle => {
+                const rad = angle * Math.PI / 180;
+                return {
+                    x: [0, compassRadius * Math.cos(rad)],
+                    y: [0, compassRadius * Math.sin(rad)],
+                    mode: 'lines',
+                    type: 'scatter',
+                    name: angle + '°',
+                    line: { color: 'rgba(0, 0, 0, 0.15)', width: 1, dash: 'dot' },
+                    showlegend: false,
+                    hoverinfo: 'skip'
+                };
+            });
+
+            // 2D plot - microphones, compass, and empty trace for sound source and direction
+            const palette = ['#22c55e', '#f97316', '#0ea5e9', '#a855f7', '#ef4444'];
+            const micTraces2d = [...compassTraces];
+            micArrays.forEach((array, idx) => {
+                const coords = array.mic_positions || [];
+                const x = coords.map(m => m.x);
+                const y = coords.map(m => m.y);
+                micTraces2d.push({
+                    x,
+                    y,
+                    mode: 'markers+text',
+                    type: 'scatter',
+                    name: array.name || `Array ${idx + 1}`,
+                    marker: { size: 15, color: array.color || palette[idx % palette.length], symbol: 'triangle-up' },
+                    text: coords.map((_, i) => `${array.name || 'Array'}·M${i + 1}`),
+                    textposition: 'top center',
+                });
+            });
+            directionTraceIndex2D = micTraces2d.length;
+            micTraces2d.push({
+                x: [0, 0],
+                y: [0, 0],
+                mode: 'lines',
+                type: 'scatter',
+                name: 'Direction',
+                line: { color: 'blue', width: 3 },
+            });
+            sourceTraceIndex2D = micTraces2d.length;
+            micTraces2d.push({
+                x: [],
+                y: [],
+                mode: 'markers',
+                type: 'scatter',
+                name: 'Sound Source',
+                marker: { size: 12, color: 'red', symbol: 'star' },
+            });
+            micArrays.forEach((array, idx) => {
+                const traceIdx = micTraces2d.length;
+                arrayDirectionIndices2D[array.name || `Array ${idx + 1}`] = traceIdx;
+                micTraces2d.push({
+                    x: [],
+                    y: [],
+                    mode: 'lines',
+                    type: 'scatter',
+                    name: `${array.name || `Array ${idx + 1}`} Direction`,
+                    line: { color: array.color || palette[idx % palette.length], width: 2, dash: 'dot' },
+                });
+            });
+            Plotly.newPlot('plot-2d', micTraces2d, plot2d.layout, plot2d.config);
+
+            const micTraces3d = micArrays.map((array, idx) => {
+                const coords = array.mic_positions || [];
+                return {
+                    x: coords.map(m => m.x),
+                    y: coords.map(m => m.y),
+                    z: coords.map(m => m.z || 0),
+                    mode: 'markers+text',
+                    type: 'scatter3d',
+                    name: array.name || `Array ${idx + 1}`,
+                    marker: { size: 8, color: array.color || palette[idx % palette.length], symbol: 'triangle-up' },
+                    text: coords.map((_, i) => `${array.name || 'Array'}·M${i + 1}`),
+                    textposition: 'top center',
+                };
+            });
+            directionTraceIndex3D = micTraces3d.length;
+            micTraces3d.push({
+                x: [0, 0],
+                y: [0, 0],
+                z: [0, 0],
+                mode: 'lines',
+                type: 'scatter3d',
+                name: 'Direction',
+                line: { color: 'blue', width: 5 },
+            });
+            sourceTraceIndex3D = micTraces3d.length;
+            micTraces3d.push({
+                x: [],
+                y: [],
+                z: [],
+                mode: 'markers',
+                type: 'scatter3d',
+                name: 'Sound Source',
+                marker: { size: 10, color: 'red', symbol: 'star' },
+            });
+            micArrays.forEach((array, idx) => {
+                const traceIdx = micTraces3d.length;
+                arrayDirectionIndices3D[array.name || `Array ${idx + 1}`] = traceIdx;
+                micTraces3d.push({
+                    x: [],
+                    y: [],
+                    z: [],
+                    mode: 'lines',
+                    type: 'scatter3d',
+                    name: `${array.name || `Array ${idx + 1}`} Direction`,
+                    line: { color: array.color || palette[idx % palette.length], width: 3, dash: 'dot' },
+                });
+            });
+            Plotly.newPlot('plot-3d', micTraces3d, plot3d.layout, plot3d.config);
+        }
+
+        function updateDashboard(data) {
+            const { azimuth_deg, elevation_deg, distance_m, position_3d, confidence, detected, classification } = data;
+
+            // Update classification display
+            if (classification) {
+                const soundClassEl = document.getElementById('sound-class');
+                const triggerStatusEl = document.getElementById('trigger-status');
+                
+                if (soundClassEl) {
+                    soundClassEl.textContent = classification.predicted_class.toUpperCase() || '--';
+                    soundClassEl.style.color = classification.trigger_detected ? '#4ade80' : '#ef4444';
+                }
+                
+                if (triggerStatusEl) {
+                    if (classification.trigger_detected) {
+                        triggerStatusEl.textContent = '✓ ACTIVE';
+                        triggerStatusEl.style.color = '#4ade80';
+                        console.log(`✓ TRIGGER SOUND DETECTED → Localization Active: ${classification.predicted_class.toUpperCase()} (conf: ${(classification.confidence * 100).toFixed(1)}%)`);
+                    } else {
+                        triggerStatusEl.textContent = '✗ IGNORED';
+                        triggerStatusEl.style.color = '#ef4444';
+                    }
+                }
+            }
+
+            // Debug logging
+            console.log('DOA Update:', { azimuth_deg, elevation_deg, distance_m, position_3d, confidence, detected, classification });
+
+            // Update detection indicator
+            const detectionIndicator = document.getElementById('detection-indicator');
+            // Show detection if we have valid azimuth/elevation values (even if confidence is low)
+            const hasValidDOA = azimuth_deg !== null && azimuth_deg !== undefined && 
+                               elevation_deg !== null && elevation_deg !== undefined &&
+                               !isNaN(azimuth_deg) && !isNaN(elevation_deg);
+            
+            if (hasValidDOA) {
+                lastDetectionTime = Date.now();
+                const confValue = (confidence !== undefined && confidence !== null) ? confidence : 0;
+                if (confValue > 0.1) {
+                    detectionIndicator.classList.add('active');
+                    detectionIndicator.textContent = 'DETECTING';
+                } else {
+                    detectionIndicator.classList.remove('active');
+                    detectionIndicator.textContent = 'WEAK SIGNAL';
+                }
+            } else {
+                detectionIndicator.classList.remove('active');
+                detectionIndicator.textContent = 'No Detection';
+                // Update confidence to show low/no detection
+                const confValue = (confidence !== undefined && confidence !== null) ? confidence * 100 : 0;
+                updateConfidence(confValue);
+                // Don't update plots if no valid DOA
+                return;
+            }
+
+            // Update stats (always show azimuth/elevation even if position_3d is null)
+            if (azimuth_deg !== null && azimuth_deg !== undefined && !isNaN(azimuth_deg)) {
+                document.getElementById('azimuth-value').textContent = azimuth_deg.toFixed(1);
+            } else {
+                document.getElementById('azimuth-value').textContent = '--';
+            }
+            if (elevation_deg !== null && elevation_deg !== undefined && !isNaN(elevation_deg)) {
+                document.getElementById('elevation-value').textContent = elevation_deg.toFixed(1);
+            } else {
+                document.getElementById('elevation-value').textContent = '--';
+            }
+            document.getElementById('distance-value').textContent = (distance_m !== null && distance_m !== undefined && !isNaN(distance_m)) ? distance_m.toFixed(3) : 'N/A';
+
+            // Calculate FPS
+            const now = Date.now();
+            updateCount++;
+            if (now - lastUpdateTime >= 1000) {
+                fps = updateCount;
+                updateCount = 0;
+                lastUpdateTime = now;
+            }
+            document.getElementById('fps-value').textContent = fps;
+
+            // Update confidence (use provided confidence or calculate)
+            const confValue = (confidence !== undefined && confidence !== null) ? confidence * 100 : calculateConfidence(data);
+            updateConfidence(confValue);
+
+            // Update system status
+            updateSystemStatus(data);
+            renderArrayStatus(data.arrays || []);
+
+            // Calculate position from azimuth/elevation if position_3d is not available
+            let x, y, z;
+            let hasPosition = false;
+            
+            // Check if position_3d has valid numeric values (not null, not undefined, not NaN)
+            const hasValidPosition = position_3d && 
+                                    typeof position_3d.x === 'number' && !isNaN(position_3d.x) &&
+                                    typeof position_3d.y === 'number' && !isNaN(position_3d.y);
+            
+            if (hasValidPosition) {
+                // Use actual 3D position if available
+                x = position_3d.x;
+                y = position_3d.y;
+                z = (typeof position_3d.z === 'number' && !isNaN(position_3d.z)) ? position_3d.z : 0;
+                hasPosition = true;
+            } else if (azimuth_deg !== null && azimuth_deg !== undefined && 
+                      elevation_deg !== null && elevation_deg !== undefined &&
+                      !isNaN(azimuth_deg) && !isNaN(elevation_deg)) {
+                // Calculate from azimuth/elevation (direction only, distance = 1m if not known)
+                const r = (distance_m && !isNaN(distance_m) && distance_m > 0) ? distance_m : 1.0;
+                const az_rad = azimuth_deg * Math.PI / 180;
+                const el_rad = elevation_deg * Math.PI / 180;
+                x = r * Math.cos(el_rad) * Math.cos(az_rad);
+                y = r * Math.cos(el_rad) * Math.sin(az_rad);
+                z = r * Math.sin(el_rad);
+                hasPosition = false; // Mark as estimated
+            } else {
+                // No valid data
+                console.warn('No valid DOA data to plot');
+                return;
+            }
+
+            // Update breakdown values
+            document.getElementById('delta-x').textContent = x.toFixed(3) + ' m';
+            document.getElementById('delta-y').textContent = y.toFixed(3) + ' m';
+            document.getElementById('delta-x-3d').textContent = x.toFixed(3) + ' m';
+            document.getElementById('delta-y-3d').textContent = y.toFixed(3) + ' m';
+            document.getElementById('delta-z').textContent = z.toFixed(3) + ' m';
+
+            // Add to trajectory
+            const currentTime = Date.now();
+            trajectory.push({ x, y, z, time: currentTime, hasPosition });
+            if (trajectory.length > 100) trajectory.shift();
+
+            // Calculate direction vector for arrow
+            const dist = Math.sqrt(x*x + y*y + z*z);
+            const arrowLength = Math.min(Math.max(dist, 0.1), 1.5);
+            const dirX = dist > 0.001 ? (x / dist) * arrowLength : 0;
+            const dirY = dist > 0.001 ? (y / dist) * arrowLength : 0;
+            const dirZ = dist > 0.001 ? (z / dist) * arrowLength : 0;
+            const anchor = getArrayCenter('Array B') || { x: 0, y: 0, z: 0 };
+            const anchorX = anchor.x || 0;
+            const anchorY = anchor.y || 0;
+            const anchorZ = anchor.z || 0;
+
+            // Update 2D plot - direction arrow and sound source position
+            // Trace indices: 0-7 = compass, 8 = microphones, 9 = direction, 10 = sound source
+            if (plotsInitialized && directionTraceIndex2D !== null && sourceTraceIndex2D !== null) {
+                Plotly.restyle('plot-2d', { x: [[anchorX, x]], y: [[anchorY, y]] }, directionTraceIndex2D);
+                Plotly.restyle('plot-2d', { x: [[x]], y: [[y]] }, sourceTraceIndex2D);
+            }
+            Object.entries(arrayDirectionIndices2D).forEach(([name, idx]) => {
+                const center = getArrayCenter(name) || { x: 0, y: 0 };
+                Plotly.restyle('plot-2d', { x: [[center.x || 0, x]], y: [[center.y || 0, y]] }, idx);
+            });
+
+            if (plotsInitialized && directionTraceIndex3D !== null && sourceTraceIndex3D !== null) {
+                Plotly.restyle(
+                    'plot-3d',
+                    { x: [[anchorX, x]], y: [[anchorY, y]], z: [[anchorZ, z]] },
+                    directionTraceIndex3D
+                );
+                Plotly.restyle('plot-3d', { x: [[x]], y: [[y]], z: [[z]] }, sourceTraceIndex3D);
+            }
+            Object.entries(arrayDirectionIndices3D).forEach(([name, idx]) => {
+                const center = getArrayCenter(name) || { x: 0, y: 0, z: 0 };
+                Plotly.restyle(
+                    'plot-3d',
+                    { x: [[center.x || 0, x]], y: [[center.y || 0, y]], z: [[center.z || 0, z]] },
+                    idx
+                );
+            });
+
+            
+            // Log update for debugging
+            console.log('Plot update:', { x: x.toFixed(3), y: y.toFixed(3), z: z.toFixed(3), 
+                                        dirX: dirX.toFixed(3), dirY: dirY.toFixed(3), dirZ: dirZ.toFixed(3) });
+
+            // Update TDOA table (use calculated position if needed)
+            const posForTDOA = hasPosition ? position_3d : { x, y, z };
+            updateTDOATable(posForTDOA);
+
+            // Update trajectory plot
+            updateTrajectory();
+
+            // Update spectrograms (simulated, 1-2 fps)
+            spectrogramUpdateCounter++;
+            if (spectrogramUpdateCounter >= Math.max(1, Math.floor(fps / 2))) {
+                updateSpectrograms();
+                spectrogramUpdateCounter = 0;
+            }
+        }
+
+        function initializeSpectrograms() {
+            // Initialize Plotly spectrograms for each microphone
+            const numFreqBins = 128; // Frequency resolution
+            const freqStep = NYQUIST_FREQ / numFreqBins;
+            
+            // Create frequency axis (0 to Nyquist frequency)
+            const frequencies = [];
+            for (let i = 0; i <= numFreqBins; i++) {
+                frequencies.push(i * freqStep);
+            }
+            
+            // Initialize empty data for each mic
+            for (let micIdx = 0; micIdx < 4; micIdx++) {
+                spectrogramData[micIdx] = [];
+                const container = document.getElementById(`spec-${micIdx + 1}`);
+                container.innerHTML = ''; // Clear placeholder
+                
+                const plotDiv = document.createElement('div');
+                plotDiv.id = `spectrogram-plot-${micIdx + 1}`;
+                plotDiv.className = 'spectrogram-plot';
+                container.appendChild(plotDiv);
+                
+                // Create initial empty spectrogram
+                const trace = {
+                    z: [[]],
+                    x: [0], // Time axis (will be updated)
+                    y: frequencies,
+                    type: 'heatmap',
+                    colorscale: 'Viridis',
+                    showscale: false,
+                    hovertemplate: 'Time: %{x:.2f}s<br>Frequency: %{y:.0f} Hz<br>Magnitude: %{z:.2f}<extra></extra>'
+                };
+                
+                const layout = {
+                    title: '',
+                    xaxis: {
+                        title: 'Time (s)',
+                        showgrid: true,
+                        gridcolor: 'rgba(255,255,255,0.1)',
+                        color: '#333'
+                    },
+                    yaxis: {
+                        title: 'Frequency (Hz)',
+                        showgrid: true,
+                        gridcolor: 'rgba(255,255,255,0.1)',
+                        color: '#333',
+                        range: [0, NYQUIST_FREQ]
+                    },
+                    margin: { l: 50, r: 10, t: 10, b: 40 },
+                    plot_bgcolor: '#1e1e1e',
+                    paper_bgcolor: '#f5f5f5',
+                    font: { size: 10, color: '#333' }
+                };
+                
+                const config = {
+                    responsive: true,
+                    displayModeBar: false,
+                    staticPlot: false
+                };
+                
+                Plotly.newPlot(`spectrogram-plot-${micIdx + 1}`, [trace], layout, config);
+                spectrogramInitialized[micIdx] = true;
+            }
+        }
+
+        function updateSpectrograms(spectrogramDataFromServer) {
+            // Use real spectrogram data from server if available
+            if (spectrogramDataFromServer && spectrogramDataFromServer.magnitudes) {
+                const times = spectrogramDataFromServer.times;
+                const freqs = spectrogramDataFromServer.freqs;
+                const magnitudes = spectrogramDataFromServer.magnitudes;
+                
+                // Update each microphone's spectrogram
+                for (let micIdx = 0; micIdx < Math.min(4, magnitudes.length); micIdx++) {
+                    if (spectrogramInitialized[micIdx] && magnitudes[micIdx]) {
+                        try {
+                            // Convert to 2D array format for Plotly
+                            const zData = [];
+                            for (let t = 0; t < times.length; t++) {
+                                zData.push(magnitudes[micIdx][t] || []);
+                            }
+                            
+                            // Normalize magnitudes to [0, 1] for display
+                            let maxMag = 0;
+                            for (let row of zData) {
+                                for (let val of row) {
+                                    maxMag = Math.max(maxMag, val);
+                                }
+                            }
+                            if (maxMag > 0) {
+                                for (let i = 0; i < zData.length; i++) {
+                                    for (let j = 0; j < zData[i].length; j++) {
+                                        zData[i][j] = zData[i][j] / maxMag;
+                                    }
+                                }
+                            }
+                            
+                            Plotly.restyle(`spectrogram-plot-${micIdx + 1}`, {
+                                z: [zData],
+                                x: [times],
+                                y: [freqs]
+                            }, [0]);
+                        } catch (e) {
+                            console.warn(`Error updating spectrogram ${micIdx + 1}:`, e);
+                        }
+                    }
+                }
+                return; // Exit early if we used real data
+            }
+            
+            // Fallback: Generate simulated spectrogram data
+            const currentTime = Date.now() / 1000;
+            const numFreqBins = 128;
+            const freqStep = NYQUIST_FREQ / numFreqBins;
+            
+            for (let micIdx = 0; micIdx < 4; micIdx++) {
+                const newFreqData = [];
+                for (let f = 0; f <= numFreqBins; f++) {
+                    const freq = f * freqStep;
+                    const baseMagnitude = 0.3;
+                    const variation = 0.4 * Math.sin(freq * 0.001 + currentTime * 2 + micIdx);
+                    const noise = (Math.random() - 0.5) * 0.2;
+                    let magnitude = baseMagnitude + variation + noise;
+                    if (Math.abs(freq - 1000) < 100) magnitude += 0.3;
+                    if (Math.abs(freq - 2000) < 100) magnitude += 0.2;
+                    if (Math.abs(freq - 4000) < 100) magnitude += 0.15;
+                    magnitude = Math.max(0, Math.min(1, magnitude));
+                    newFreqData.push(magnitude);
+                }
+                
+                spectrogramTimeData.push(currentTime);
+                spectrogramData[micIdx].push(newFreqData);
+                
+                const cutoffTime = currentTime - MAX_TIME_WINDOW;
+                while (spectrogramTimeData.length > 0 && spectrogramTimeData[0] < cutoffTime) {
+                    spectrogramTimeData.shift();
+                    spectrogramData[micIdx].shift();
+                }
+                
+                if (spectrogramInitialized[micIdx] && spectrogramData[micIdx].length > 0) {
+                    const frequencies = [];
+                    for (let f = 0; f <= numFreqBins; f++) {
+                        frequencies.push(f * freqStep);
+                    }
+                    
+                    const zData = [];
+                    const timeAxis = [];
+                    const startTime = spectrogramTimeData[0];
+                    
+                    for (let t = 0; t < spectrogramData[micIdx].length; t++) {
+                        timeAxis.push(spectrogramTimeData[t] - startTime);
+                        zData.push(spectrogramData[micIdx][t]);
+                    }
+                    
+                    try {
+                        Plotly.restyle(`spectrogram-plot-${micIdx + 1}`, {
+                            z: [zData],
+                            x: [timeAxis],
+                            y: [frequencies]
+                        }, [0]);
+                    } catch (e) {
+                        console.warn(`Error updating spectrogram ${micIdx + 1}:`, e);
+                    }
+                }
+            }
+        }
+
+        function updateTrajectory() {
+            const canvas = document.createElement('canvas');
+            canvas.width = document.getElementById('trajectory').offsetWidth;
+            canvas.height = document.getElementById('trajectory').offsetHeight;
+            const ctx = canvas.getContext('2d');
+            
+            const container = document.getElementById('trajectory');
+            container.innerHTML = '';
+            container.appendChild(canvas);
+
+            if (trajectory.length < 2) return;
+
+            // Normalize trajectory to fit canvas
+            const xs = trajectory.map(p => p.x);
+            const ys = trajectory.map(p => p.y);
+            const minX = Math.min(...xs);
+            const maxX = Math.max(...xs);
+            const minY = Math.min(...ys);
+            const maxY = Math.max(...ys);
+            const rangeX = maxX - minX || 1;
+            const rangeY = maxY - minY || 1;
+
+            const scaleX = (canvas.width - 40) / rangeX;
+            const scaleY = (canvas.height - 40) / rangeY;
+            const offsetX = 20 - minX * scaleX;
+            const offsetY = 20 - minY * scaleY;
+
+            const currentTime = Date.now();
+            
+            // Draw trajectory with fading
+            for (let i = 1; i < trajectory.length; i++) {
+                const age = (currentTime - trajectory[i].time) / 1000; // seconds
+                const alpha = Math.max(0.1, 1 - age / 5); // Fade over 5 seconds
+                
+                ctx.strokeStyle = `rgba(102, 126, 234, ${alpha})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                const x1 = trajectory[i - 1].x * scaleX + offsetX;
+                const y1 = trajectory[i - 1].y * scaleY + offsetY;
+                const x2 = trajectory[i].x * scaleX + offsetX;
+                const y2 = trajectory[i].y * scaleY + offsetY;
+                
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                
+                // Add time labels for recent points
+                if (age < 3 && i % 5 === 0) {
+                    ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+                    ctx.font = '10px Arial';
+                    ctx.fillText(`t-${age.toFixed(1)}s`, x2 + 5, y2 - 5);
+                }
+            }
+
+            // Draw current position (highlighted in red)
+            if (trajectory.length > 0) {
+                const last = trajectory[trajectory.length - 1];
+                const x = last.x * scaleX + offsetX;
+                const y = last.y * scaleY + offsetY;
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(x, y, 6, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Highlight ring
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(x, y, 10, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+        }
+
+        function exportSnapshot() {
+            const snapshot = {
+                timestamp: new Date().toISOString(),
+                azimuth: document.getElementById('azimuth-value').textContent,
+                elevation: document.getElementById('elevation-value').textContent,
+                distance: document.getElementById('distance-value').textContent,
+                confidence: document.getElementById('confidence-bar').textContent,
+                position: trajectory.length > 0 ? trajectory[trajectory.length - 1] : null,
+                fps: fps,
+                system: {
+                    array: document.getElementById('array-name').textContent,
+                    samplingRate: document.getElementById('sampling-rate').textContent,
+                    latency: document.getElementById('latency').textContent,
+                    cpuLoad: document.getElementById('cpu-load').textContent
+                }
+            };
+            
+            // Create JSON download
+            const jsonStr = JSON.stringify(snapshot, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `localization_snapshot_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // Also try to export plots as images (if Plotly supports it)
+            try {
+                Plotly.downloadImage('plot-2d', {
+                    format: 'png',
+                    width: 800,
+                    height: 600,
+                    filename: `localization_2d_${Date.now()}`
+                });
+                Plotly.downloadImage('plot-3d', {
+                    format: 'png',
+                    width: 800,
+                    height: 600,
+                    filename: `localization_3d_${Date.now()}`
+                });
+            } catch (e) {
+                console.log('Plot export not available:', e);
+            }
+        }
+
+        function startProcessing() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'start_processing' }));
+            }
+        }
+
+        function stopProcessing() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'stop_processing' }));
+            }
+        }
+
+        // Check for detection timeout
+        function checkDetectionTimeout() {
+            const now = Date.now();
+            const timeSinceLastDetection = now - lastDetectionTime;
+            const detectionIndicator = document.getElementById('detection-indicator');
+            
+            if (timeSinceLastDetection > 2000 && lastDetectionTime > 0) {
+                detectionIndicator.classList.remove('active');
+                detectionIndicator.textContent = 'No Detection';
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            connectWebSocket();
+            setInterval(updateTrajectory, 100);
+            setInterval(checkDetectionTimeout, 500);
+        });
+    </script>
+</body>
+</html>
